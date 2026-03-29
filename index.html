@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เกมจับคู่อีโมจิ | Memory Puzzle</title>
+    <style>
+        /* ส่วนของการตกแต่งหน้าตาเกม (CSS) */
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            background-color: #f0f8ff; 
+            margin: 0; 
+            padding: 30px; 
+        }
+        h1 { color: #333; margin-bottom: 5px; }
+        .stats { margin-bottom: 20px; font-size: 18px; color: #555; }
+        
+        .game-board { 
+            display: grid; 
+            grid-template-columns: repeat(4, 80px); /* สร้างตาราง 4x4 */
+            gap: 10px; 
+        }
+        
+        .card { 
+            width: 80px; 
+            height: 80px; 
+            background-color: #4CAF50; 
+            border-radius: 10px; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            font-size: 40px; 
+            cursor: pointer; 
+            color: transparent; 
+            transition: transform 0.2s, background-color 0.3s; 
+            user-select: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .card:active { transform: scale(0.95); }
+        .card.flipped { background-color: #fff; color: #000; cursor: default; }
+        .card.matched { background-color: #ffeb3b; color: #000; cursor: default; animation: pop 0.3s ease; }
+        
+        button { 
+            margin-top: 25px; 
+            padding: 12px 24px; 
+            font-size: 16px; 
+            font-weight: bold;
+            cursor: pointer; 
+            background-color: #2196F3; 
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: background-color 0.2s;
+        }
+        button:hover { background-color: #0b7dda; }
+
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🧩 เกมปริศนาจับคู่ 🧩</h1>
+    <div class="stats">จำนวนครั้งที่เปิด: <span id="moves" style="font-weight: bold; color: #e91e63;">0</span></div>
+    
+    <div class="game-board" id="game-board"></div>
+    <button onclick="initGame()">🔄 เริ่มเกมใหม่</button>
+
+    <script>
+        // ส่วนของระบบหลังบ้านและกติกาเกม (JavaScript)
+        const emojis = ['🐶', '🐱', '🐭', '🐰', '🦊', '🐻', '🐼', '🐸'];
+        let cards = [...emojis, ...emojis]; // จำลองไพ่เป็นคู่ (รวม 16 ใบ)
+        let moves = 0;
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let isLocked = false;
+
+        // ฟังก์ชันสลับตำแหน่งไพ่
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // ฟังก์ชันสร้างกระดานและเริ่มเกม
+        function initGame() {
+            const board = document.getElementById('game-board');
+            board.innerHTML = '';
+            shuffle(cards);
+            moves = 0;
+            matchedPairs = 0;
+            flippedCards = [];
+            isLocked = false;
+            document.getElementById('moves').innerText = moves;
+
+            cards.forEach((emoji, index) => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.emoji = emoji;
+                card.addEventListener('click', flipCard);
+                board.appendChild(card);
+            });
+        }
+
+        // ฟังก์ชันเมื่อคลิกเปิดไพ่
+        function flipCard() {
+            // ป้องกันการกดไพ่ที่เปิดอยู่แล้ว หรือกดรัวๆ เกิน 2 ใบ
+            if (isLocked || this.classList.contains('flipped') || this.classList.contains('matched')) return;
+
+            this.classList.add('flipped');
+            this.innerText = this.dataset.emoji;
+            flippedCards.push(this);
+
+            // ถ้าเปิดครบ 2 ใบ ให้เช็คว่าตรงกันไหม
+            if (flippedCards.length === 2) {
+                moves++;
+                document.getElementById('moves').innerText = moves;
+                checkMatch();
+            }
+        }
+
+        // ฟังก์ชันตรวจสอบการจับคู่
+        function checkMatch() {
+            isLocked = true; // ล็อคกระดานชั่วคราวขณะเช็ค
+            const [card1, card2] = flippedCards;
+
+            if (card1.dataset.emoji === card2.dataset.emoji) {
+                // จับคู่ถูก
+                card1.classList.add('matched');
+                card2.classList.add('matched');
+                matchedPairs++;
+                flippedCards = [];
+                isLocked = false;
+
+                // ตรวจสอบว่าชนะหรือยัง
+                if (matchedPairs === emojis.length) {
+                    setTimeout(() => alert(`🎉 ยินดีด้วย! คุณชนะแล้ว! 🎉\nคุณใช้การเปิดไพ่ไปทั้งหมด ${moves} ครั้ง`), 400);
+                }
+            } else {
+                // จับคู่ผิด ให้คว่ำไพ่กลับไปหลังจากผ่านไป 1 วินาที
+                setTimeout(() => {
+                    card1.classList.remove('flipped');
+                    card2.classList.remove('flipped');
+                    card1.innerText = '';
+                    card2.innerText = '';
+                    flippedCards = [];
+                    isLocked = false;
+                }, 1000);
+            }
+        }
+
+        // สั่งให้เกมเริ่มทำงานทันทีที่โหลดหน้าเว็บเสร็จ
+        initGame();
+    </script>
+</body>
+</html>
