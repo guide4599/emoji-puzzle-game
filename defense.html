@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Crystal Defender | อัปเกรดจัดเต็ม</title>
+    <title>Crystal Defender | ความโหดระดับนรก</title>
     <style>
         body, html { 
             margin: 0; padding: 0; width: 100%; height: 100%; 
@@ -13,18 +13,15 @@
         }
         canvas { display: block; position: absolute; top: 0; left: 0; z-index: 1; }
         
-        /* UI ด้านบน */
         #ui { position: absolute; top: 10px; left: 15px; width: calc(100% - 30px); z-index: 10; pointer-events: none; }
         .status-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; font-weight: bold; font-size: 16px; }
         .hp-text { color: #45f3ff; text-shadow: 0 0 8px #45f3ff; }
         .score-text { color: #ffeb3b; text-shadow: 0 0 8px #ffeb3b; }
         
-        /* หลอด EXP */
         .exp-container { width: 100%; height: 12px; background: #1f2833; border-radius: 6px; border: 1px solid #45a29e; overflow: hidden; position: relative; }
         .exp-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #66fcf1, #45f3ff); transition: width 0.2s; }
         .lvl-text { position: absolute; top: -2px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #0b0c10; font-weight: bold; }
 
-        /* หน้าต่างจบทับ */
         .modal {
             display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             text-align: center; background: rgba(11, 12, 16, 0.95); padding: 25px; border-radius: 15px;
@@ -35,7 +32,6 @@
         .modal-red h1 { color: #ff4757; text-shadow: 0 0 10px #ff4757; }
         .modal-blue h1 { color: #45f3ff; text-shadow: 0 0 10px #45f3ff; }
 
-        /* ปุ่มอัปเกรด */
         .upgrade-btn {
             display: flex; flex-direction: column; width: 100%; margin-bottom: 12px; padding: 12px;
             background: linear-gradient(135deg, #1f2833, #2c3e50); border: 2px solid #66fcf1;
@@ -70,16 +66,15 @@
 
     <div id="level-up-modal" class="modal modal-blue">
         <h1>🌟 LEVEL UP! 🌟</h1>
-        <p style="margin-top:0; color: #c5c6c7; font-size: 14px;">เลือกความสามารถ 1 อย่าง</p>
-        <div id="upgrade-options">
-            </div>
+        <p style="margin-top:0; color: #c5c6c7; font-size: 14px;">เลือกอัปเกรด 1 อย่าง</p>
+        <div id="upgrade-options"></div>
     </div>
 
     <div id="game-over-modal" class="modal modal-red">
         <h1>💥 ฐานแตก! 💥</h1>
         <p>กำจัดศัตรูไป: <b style="color: #ffeb3b; font-size: 20px;"><span id="final-score">0</span></b><br>
            เลเวลสูงสุด: <b style="color: #45f3ff;"><span id="final-lvl">1</span></b></p>
-        <button class="btn-action" onclick="resetGame()">🔄 เล่นใหม่อีกครั้ง</button>
+        <button class="btn-action" onclick="resetGame()">🔄 ลุยใหม่อีกครั้ง</button>
         <a href="index.html" class="btn-action btn-home">🏠 เมนูหลัก</a>
     </div>
 
@@ -87,21 +82,11 @@
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
         
-        // --- ค่าสถานะเกมและตัวละคร ---
         let base = { x: 0, y: 0, radius: 35 };
-        let stats = {
-            hp: 100, maxHp: 100, score: 0, level: 1, exp: 0, maxExp: 100,
-            damage: 1, shootSpeed: 15, multiShot: 1, bulletSpeed: 12
-        };
-        
-        let gameActive = true;
-        let frames = 0;
-        let isShooting = false;
-        let targetX = 0, targetY = 0;
-        
+        let stats = { hp: 100, maxHp: 100, score: 0, level: 1, exp: 0, maxExp: 100, damage: 1, shootSpeed: 15, multiShot: 1, bulletSpeed: 12 };
+        let gameActive = true, frames = 0, isShooting = false, targetX = 0, targetY = 0;
         let bullets = [], enemies = [], particles = [], floatTexts = [];
 
-        // ปรับขนาดหน้าจอ
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -111,7 +96,6 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // --- ระบบควบคุมการกดยิงค้าง ---
         function updateTarget(e) {
             targetX = e.clientX || (e.touches && e.touches[0].clientX);
             targetY = e.clientY || (e.touches && e.touches[0].clientY);
@@ -120,40 +104,34 @@
         window.addEventListener("mousedown", (e) => { isShooting = true; updateTarget(e); });
         window.addEventListener("mousemove", (e) => { if(isShooting) updateTarget(e); });
         window.addEventListener("mouseup", () => isShooting = false);
-        
         window.addEventListener("touchstart", (e) => { e.preventDefault(); isShooting = true; updateTarget(e); }, {passive: false});
         window.addEventListener("touchmove", (e) => { e.preventDefault(); if(isShooting) updateTarget(e); }, {passive: false});
         window.addEventListener("touchend", () => isShooting = false);
 
-        // --- ระบบอัปเกรด (Roguelite) ---
         const upgradePool = [
-            { name: "⚔️ ดาเมจรุนแรง", desc: "เพิ่มพลังโจมตีกระสุน +1", action: () => stats.damage += 1 },
-            { name: "⚡ ปืนกลเวทมนตร์", desc: "ยิงเร็วขึ้น 20%", action: () => stats.shootSpeed = Math.max(4, stats.shootSpeed - 3) },
-            { name: "🔫 ยิงกระจาย", desc: "เพิ่มจำนวนกระสุน +1 นัด", action: () => stats.multiShot += 1 },
-            { name: "❤️ ซ่อมแซมฐาน", desc: "ฟื้นฟูเลือด 40 หน่วย", action: () => stats.hp = Math.min(stats.maxHp, stats.hp + 40) },
-            { name: "🛡️ เสริมเกราะฐาน", desc: "เพิ่ม Max HP +50", action: () => { stats.maxHp += 50; stats.hp += 50; } }
+            { name: "⚔️ ดาเมจรุนแรง", desc: "พลังโจมตี +1.5", action: () => stats.damage += 1.5 },
+            { name: "⚡ ปืนกลเวทมนตร์", desc: "ยิงเร็วขึ้นรัวๆ", action: () => stats.shootSpeed = Math.max(3, stats.shootSpeed - 3) },
+            { name: "🔫 กระสุนลูกซอง", desc: "ยิงกระจาย +1 นัด", action: () => stats.multiShot += 1 },
+            { name: "❤️ นาโนแมชชีน", desc: "ฟื้นฟูเลือดฐาน 50 หน่วย", action: () => stats.hp = Math.min(stats.maxHp, stats.hp + 50) },
+            { name: "🛡️ ผนังไทเทเนียม", desc: "เพิ่ม Max HP +100", action: () => { stats.maxHp += 100; stats.hp += 100; } }
         ];
 
         function checkLevelUp() {
             if (stats.exp >= stats.maxExp) {
                 stats.exp -= stats.maxExp;
                 stats.level++;
-                stats.maxExp = Math.floor(stats.maxExp * 1.5); // ใช้ EXP เยอะขึ้นในเลเวลถัดไป
+                stats.maxExp = Math.floor(stats.maxExp * 1.6); // EXP ต้องการเพิ่มขึ้นไวมาก
                 document.getElementById('lvl').innerText = stats.level;
                 showLevelUpMenu();
             }
-            // อัปเดตหลอด EXP
-            let expPercent = (stats.exp / stats.maxExp) * 100;
-            document.getElementById('exp-bar').style.width = `${expPercent}%`;
+            document.getElementById('exp-bar').style.width = `${(stats.exp / stats.maxExp) * 100}%`;
         }
 
         function showLevelUpMenu() {
-            gameActive = false; // หยุดเกมชั่วคราว
-            isShooting = false;
+            gameActive = false; isShooting = false;
             let optionsDiv = document.getElementById('upgrade-options');
             optionsDiv.innerHTML = '';
             
-            // สุ่มสกิลมา 3 แบบไม่ซ้ำกัน
             let shuffled = upgradePool.sort(() => 0.5 - Math.random());
             let choices = shuffled.slice(0, 3);
             
@@ -161,15 +139,9 @@
                 let btn = document.createElement('div');
                 btn.className = 'upgrade-btn';
                 btn.innerHTML = `<div class="upgrade-title">${choice.name}</div><div class="upgrade-desc">${choice.desc}</div>`;
-                btn.onclick = () => {
-                    choice.action(); // ใช้งานสกิล
-                    updateUI();
-                    document.getElementById('level-up-modal').style.display = 'none';
-                    gameActive = true; // เล่นต่อ
-                };
+                btn.onclick = () => { choice.action(); updateUI(); document.getElementById('level-up-modal').style.display = 'none'; gameActive = true; };
                 optionsDiv.appendChild(btn);
             });
-            
             document.getElementById('level-up-modal').style.display = 'block';
         }
 
@@ -179,66 +151,44 @@
             document.getElementById('score').innerText = stats.score;
         }
 
-        // --- ฟังก์ชันวาดเอฟเฟกต์ ---
-        function createExplosion(x, y, color) {
-            for (let i = 0; i < 10; i++) {
+        function createExplosion(x, y, color, sizeMultiplier = 1) {
+            for (let i = 0; i < 12 * sizeMultiplier; i++) {
                 particles.push({
                     x: x, y: y,
-                    vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8,
+                    vx: (Math.random() - 0.5) * 10 * sizeMultiplier, vy: (Math.random() - 0.5) * 10 * sizeMultiplier,
                     life: 1.0, color: color
                 });
             }
         }
 
-        function createFloatText(x, y, text, color) {
-            floatTexts.push({ x: x, y: y, text: text, color: color, life: 1.0, vy: -1.5 });
+        function createFloatText(x, y, text, color, isCrit = false) {
+            floatTexts.push({ x: x, y: y, text: text, color: color, life: 1.0, vy: -2, size: isCrit ? 24 : 16 });
         }
 
-        // --- ลูปเกมหลัก ---
         function update() {
-            if (!gameActive) {
-                requestAnimationFrame(update);
-                return;
-            }
+            if (!gameActive) { requestAnimationFrame(update); return; }
 
-            // พื้นหลังภาพแบบกริตล้ำๆ
-            ctx.fillStyle = "#0b0c10";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.strokeStyle = "rgba(69, 162, 158, 0.1)";
-            ctx.lineWidth = 1;
+            ctx.fillStyle = "#0b0c10"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = "rgba(69, 162, 158, 0.1)"; ctx.lineWidth = 1;
             for(let i=0; i<canvas.width; i+=40) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); }
             for(let i=0; i<canvas.height; i+=40) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke(); }
 
-            // วาดฐาน
-            ctx.beginPath();
-            ctx.arc(base.x, base.y, base.radius, 0, Math.PI * 2);
-            ctx.fillStyle = "#1f2833";
-            ctx.fill();
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = "#45f3ff";
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = "#45f3ff";
-            ctx.stroke();
-            ctx.shadowBlur = 0;
+            ctx.beginPath(); ctx.arc(base.x, base.y, base.radius, 0, Math.PI * 2);
+            ctx.fillStyle = "#1f2833"; ctx.fill();
+            ctx.lineWidth = 3; ctx.strokeStyle = "#45f3ff"; ctx.shadowBlur = 15; ctx.shadowColor = "#45f3ff"; ctx.stroke(); ctx.shadowBlur = 0;
 
-            // ระบบยิงรัว (ถ้ายิงค้างและถึงรอบยิง)
             if (isShooting && frames % stats.shootSpeed === 0) {
                 let baseAngle = Math.atan2(targetY - base.y, targetX - base.x);
-                // ยิงกระจาย (คำนวณมุมตามจำนวน multiShot)
-                let spread = 0.2; // องศาความกว้าง
+                let spread = 0.2; 
                 let startAngle = baseAngle - (spread * (stats.multiShot - 1) / 2);
-                
                 for(let i=0; i<stats.multiShot; i++) {
-                    let angle = startAngle + (i * spread);
                     bullets.push({
-                        x: base.x, y: base.y,
-                        vx: Math.cos(angle) * stats.bulletSpeed, vy: Math.sin(angle) * stats.bulletSpeed,
+                        x: base.x, y: base.y, vx: Math.cos(startAngle + (i * spread)) * stats.bulletSpeed, vy: Math.sin(startAngle + (i * spread)) * stats.bulletSpeed,
                         radius: 6, color: '#66fcf1'
                     });
                 }
             }
 
-            // อัปเดตกระสุน
             for (let i = bullets.length - 1; i >= 0; i--) {
                 let b = bullets[i];
                 b.x += b.vx; b.y += b.vy;
@@ -247,44 +197,57 @@
                 if (b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) bullets.splice(i, 1);
             }
 
-            // อัปเดตศัตรู
-            let spawnRate = Math.max(15, 60 - Math.floor(stats.score/3)); // ศัตรูมาไวขึ้นเรื่อยๆ
+            // --- ระบบสุ่มเกิดสุดโหด ---
+            // อัตราการเกิดจะไวขึ้นเรื่อยๆ (ขีดจำกัดสูงสุดคือเกิดทุก 6 เฟรม = ไวมากๆ)
+            let spawnRate = Math.max(6, 60 - Math.floor(stats.score / 2) - (stats.level * 2)); 
+            
             if (frames % spawnRate === 0) {
                 let x = Math.random() < 0.5 ? Math.random() * canvas.width : (Math.random() < 0.5 ? -30 : canvas.width + 30);
                 let y = (x < 0 || x > canvas.width) ? Math.random() * canvas.height/2 : -30;
                 let angle = Math.atan2(base.y - y, base.x - x);
                 
-                // เลือดศัตรูอึดขึ้นตามคะแนน
-                let enemyHp = 1 + Math.floor(stats.score / 20); 
-                
-                enemies.push({
-                    x: x, y: y, hp: enemyHp,
-                    vx: Math.cos(angle) * (1.2 + (stats.score * 0.01)), vy: Math.sin(angle) * (1.2 + (stats.score * 0.01)),
-                    radius: 12 + (Math.min(enemyHp, 10)), color: '#ff4757'
-                });
+                // สเกลความโหดพื้นฐาน
+                let eHp = 1 + Math.floor(stats.score / 15) + Math.floor(stats.level / 2);
+                let eSpeed = 1.2 + (stats.score * 0.01) + (stats.level * 0.05);
+                let eRadius = 12;
+                let eColor = '#ff4757';
+                let eExp = 15;
+                let isBoss = false;
+
+                // โอกาสเกิดตัวพิเศษ
+                if (stats.score > 20 && Math.random() < 0.05 + (stats.level * 0.005)) {
+                    // Tank Boss (ถึกมาก ช้า ตัวใหญ่)
+                    eHp *= 5; eSpeed *= 0.5; eRadius = 25; eColor = '#ff0000'; eExp = 50; isBoss = true;
+                } else if (stats.score > 40 && Math.random() < 0.15) {
+                    // Speedster (เลือดน้อย วิ่งไวมาก ตัวเล็กสีส้ม)
+                    eHp = Math.max(1, Math.floor(eHp / 2)); eSpeed *= 1.8; eRadius = 8; eColor = '#ffa502'; eExp = 25;
+                }
+
+                enemies.push({ x: x, y: y, hp: eHp, maxHp: eHp, vx: Math.cos(angle) * eSpeed, vy: Math.sin(angle) * eSpeed, radius: eRadius, color: eColor, exp: eExp, isBoss: isBoss });
             }
 
             for (let i = enemies.length - 1; i >= 0; i--) {
                 let e = enemies[i];
                 e.x += e.vx; e.y += e.vy;
 
-                // วาดศัตรูเหลี่ยมๆ (ลุคไซเบอร์)
-                ctx.save();
-                ctx.translate(e.x, e.y);
-                ctx.rotate(frames * 0.05);
-                ctx.beginPath();
-                ctx.rect(-e.radius, -e.radius, e.radius*2, e.radius*2);
-                ctx.strokeStyle = e.color; ctx.lineWidth = 3; ctx.stroke();
-                ctx.fillStyle = "rgba(255, 71, 87, 0.2)"; ctx.fill();
-                ctx.restore();
+                ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(frames * (e.isBoss ? 0.02 : 0.05));
+                ctx.beginPath(); ctx.rect(-e.radius, -e.radius, e.radius*2, e.radius*2);
+                ctx.strokeStyle = e.color; ctx.lineWidth = e.isBoss ? 5 : 3; ctx.stroke();
+                ctx.fillStyle = "rgba(255, 71, 87, 0.2)"; ctx.fill(); ctx.restore();
 
-                // ชนฐาน
+                // วาดหลอดเลือดมอนสเตอร์ (ถ้าโดนตี)
+                if (e.hp < e.maxHp) {
+                    ctx.fillStyle = "rgba(255, 0, 0, 0.7)"; ctx.fillRect(e.x - e.radius, e.y - e.radius - 8, e.radius * 2, 4);
+                    ctx.fillStyle = "#2ecc71"; ctx.fillRect(e.x - e.radius, e.y - e.radius - 8, (e.radius * 2) * (e.hp / e.maxHp), 4);
+                }
+
                 if (Math.hypot(e.x - base.x, e.y - base.y) < e.radius + base.radius) {
-                    stats.hp -= 15;
+                    let dmgToBase = e.isBoss ? 40 : 15; // บอสชนทีเดียวเลือดลดฮวบ
+                    stats.hp -= dmgToBase;
                     updateUI();
-                    createExplosion(e.x, e.y, e.color);
+                    createExplosion(e.x, e.y, e.color, e.isBoss ? 2 : 1);
                     enemies.splice(i, 1);
-                    ctx.fillStyle = "rgba(255, 71, 87, 0.3)"; ctx.fillRect(0, 0, canvas.width, canvas.height); // จอแดง
+                    ctx.fillStyle = "rgba(255, 0, 0, 0.4)"; ctx.fillRect(0, 0, canvas.width, canvas.height); 
                     
                     if (stats.hp <= 0) {
                         gameActive = false;
@@ -295,49 +258,40 @@
                     continue;
                 }
 
-                // โดนกระสุน
                 for (let j = bullets.length - 1; j >= 0; j--) {
                     let b = bullets[j];
                     if (Math.hypot(e.x - b.x, e.y - b.y) < e.radius + b.radius) {
-                        e.hp -= stats.damage;
-                        createFloatText(e.x, e.y - 10, stats.damage, "#ffeb3b"); // เลขดาเมจเด้ง
-                        createExplosion(b.x, b.y, b.color);
+                        // โอกาสติดคริติคอล 20%
+                        let isCrit = Math.random() < 0.2;
+                        let finalDmg = isCrit ? stats.damage * 2 : stats.damage;
+                        
+                        e.hp -= finalDmg;
+                        createFloatText(e.x, e.y - 10, Math.floor(finalDmg*10)/10, isCrit ? "#ff0000" : "#ffeb3b", isCrit); 
+                        createExplosion(b.x, b.y, b.color, 0.5);
                         bullets.splice(j, 1);
                         
                         if(e.hp <= 0) {
-                            createExplosion(e.x, e.y, e.color);
+                            createExplosion(e.x, e.y, e.color, e.isBoss ? 2 : 1);
                             enemies.splice(i, 1);
                             stats.score++;
-                            stats.exp += 15; // ได้ EXP
-                            updateUI();
-                            checkLevelUp();
+                            stats.exp += e.exp; 
+                            updateUI(); checkLevelUp();
                         }
                         break;
                     }
                 }
             }
 
-            // อัปเดตพาร์ทิเคิลระเบิด
             for (let i = particles.length - 1; i >= 0; i--) {
-                let p = particles[i];
-                p.x += p.vx; p.y += p.vy; p.life -= 0.05;
+                let p = particles[i]; p.x += p.vx; p.y += p.vy; p.life -= 0.05;
                 if (p.life <= 0) particles.splice(i, 1);
-                else {
-                    ctx.globalAlpha = p.life; ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
-                    ctx.fillStyle = p.color; ctx.fill(); ctx.globalAlpha = 1.0;
-                }
+                else { ctx.globalAlpha = p.life; ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fillStyle = p.color; ctx.fill(); ctx.globalAlpha = 1.0; }
             }
 
-            // อัปเดตตัวหนังสือลอย (ดาเมจ)
             for (let i = floatTexts.length - 1; i >= 0; i--) {
-                let ft = floatTexts[i];
-                ft.y += ft.vy; ft.life -= 0.03;
+                let ft = floatTexts[i]; ft.y += ft.vy; ft.life -= 0.03;
                 if (ft.life <= 0) floatTexts.splice(i, 1);
-                else {
-                    ctx.globalAlpha = ft.life; ctx.fillStyle = ft.color;
-                    ctx.font = "bold 16px Arial"; ctx.fillText(ft.text, ft.x, ft.y);
-                    ctx.globalAlpha = 1.0;
-                }
+                else { ctx.globalAlpha = ft.life; ctx.fillStyle = ft.color; ctx.font = `bold ${ft.size}px Arial`; ctx.fillText(ft.text, ft.x, ft.y); ctx.globalAlpha = 1.0; }
             }
 
             frames++;
@@ -348,14 +302,12 @@
             stats = { hp: 100, maxHp: 100, score: 0, level: 1, exp: 0, maxExp: 100, damage: 1, shootSpeed: 15, multiShot: 1, bulletSpeed: 12 };
             enemies = []; bullets = []; particles = []; floatTexts = []; frames = 0;
             updateUI();
-            document.getElementById('exp-bar').style.width = `0%`;
-            document.getElementById('lvl').innerText = "1";
+            document.getElementById('exp-bar').style.width = `0%`; document.getElementById('lvl').innerText = "1";
             document.getElementById('game-over-modal').style.display = 'none';
             gameActive = true;
         }
 
-        updateUI();
-        update();
+        updateUI(); update();
     </script>
 </body>
 </html>
