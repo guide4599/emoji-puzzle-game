@@ -1,214 +1,272 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Lane Defense</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Crystal Defender | เกมป้องกันฐาน</title>
     <style>
-        body {
-            background-color: #2c3e50;
-            color: white;
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin-top: 50px;
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #1a1a2e; /* สีพื้นหลังโทนมืด */
+            color: white; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none; 
         }
-        canvas {
-            background-color: #ecf0f1;
-            border: 4px solid #34495e;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-        }
-        .controls {
-            margin-top: 20px;
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            background-color: #3498db;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        button:hover {
-            background-color: #2980b9;
-        }
-        button:disabled {
-            background-color: #95a5a6;
-            cursor: not-allowed;
-        }
-        #stats {
-            font-size: 20px;
-            margin-left: 20px;
+        #ui {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            font-size: 18px;
             font-weight: bold;
+            pointer-events: none;
+            z-index: 10;
         }
+        .hp-bar { color: #00d2d3; text-shadow: 0 0 5px #00d2d3; margin-bottom: 5px; }
+        .score-bar { color: #feca57; text-shadow: 0 0 5px #feca57; }
+        
+        #game-over {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 30px;
+            border-radius: 20px;
+            border: 2px solid #ff6b6b;
+            box-shadow: 0 0 30px rgba(255, 107, 107, 0.5);
+            z-index: 20;
+            width: 80%;
+            max-width: 300px;
+        }
+        #game-over h1 { margin: 0 0 10px 0; color: #ff6b6b; }
+        
+        .btn {
+            display: block;
+            width: 100%;
+            margin-top: 15px;
+            padding: 12px 0;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            background: #ff6b6b;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        #home-btn { background: #576574; }
     </style>
 </head>
 <body>
 
-    <h1>🛡️ Mini Lane Defense</h1>
-    <canvas id="gameCanvas" width="800" height="300"></canvas>
-    
-    <div class="controls">
-        <button id="spawnBtn">เรียกทหาร (ราคา: 15 🪙)</button>
-        <span id="stats">เงิน: 50 🪙</span>
+    <div id="ui">
+        <div class="hp-bar">🛡️ พลังงานฐาน: <span id="hp">100</span>%</div>
+        <div class="score-bar">⚔️ กำจัดศัตรู: <span id="score">0</span> ตัว</div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="game-over">
+        <h1>💥 ฐานแตก! 💥</h1>
+        <p>คุณปกป้องฐานและกำจัดศัตรูไปได้<br><b style="font-size: 24px; color: #feca57;"><span id="final-score">0</span></b> ตัว</p>
+        <button class="btn" onclick="resetGame()">🔄 ป้องกันฐานอีกครั้ง</button>
+        <a href="index.html" class="btn" id="home-btn">🏠 กลับเมนูหลัก</a>
     </div>
 
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-
-        // ข้อมูลฐาน
-        let playerBase = { x: 20, y: 100, width: 60, height: 100, hp: 100, color: '#3498db' };
-        let enemyBase = { x: 720, y: 100, width: 60, height: 100, hp: 100, color: '#e74c3c' };
-
-        let units = [];
-        let money = 50;
-        let frameCount = 0;
-        let gameOver = false;
-
-        const spawnBtn = document.getElementById('spawnBtn');
-        const statsDisplay = document.getElementById('stats');
-
-        class Unit {
-            constructor(x, y, team) {
-                this.x = x;
-                this.y = y;
-                this.team = team;
-                this.width = 20;
-                this.height = 30;
-                this.hp = 30;
-                this.maxHp = 30;
-                this.damage = 1;
-                // ทีมเราเดินขวา (บวก) ทีมศัตรูเดินซ้าย (ลบ)
-                this.speed = team === 'player' ? 1.5 : -1.5; 
-                this.color = team === 'player' ? '#2980b9' : '#c0392b';
-                this.isFighting = false;
-            }
-
-            draw() {
-                // วาดตัวละคร
-                ctx.fillStyle = this.color;
-                ctx.fillRect(this.x, this.y, this.width, this.height);
-                
-                // วาดหลอดเลือด
-                ctx.fillStyle = 'red';
-                ctx.fillRect(this.x, this.y - 10, this.width, 4);
-                ctx.fillStyle = '#2ecc71';
-                ctx.fillRect(this.x, this.y - 10, this.width * (this.hp / this.maxHp), 4);
-            }
-
-            update() {
-                if (!this.isFighting) {
-                    this.x += this.speed;
-                }
-            }
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        
+        // ปรับขนาดจอให้เต็มมือถือ
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
         }
+        window.addEventListener('resize', resize);
+        resize();
 
-        function updateUI() {
-            statsDisplay.innerText = `เงิน: ${money} 🪙`;
-            spawnBtn.disabled = money < 15;
-        }
+        // ตัวแปรระบบเกม
+        let score = 0;
+        let baseHp = 100;
+        let gameActive = true;
+        let frames = 0;
 
-        // กดปุ่มเรียกทหาร
-        spawnBtn.addEventListener('click', () => {
-            if (money >= 15 && !gameOver) {
-                money -= 15;
-                // ปล่อยทหารจากหน้าฐานเรา
-                units.push(new Unit(playerBase.x + playerBase.width + 5, 135, 'player'));
-                updateUI();
-            }
-        });
+        // ข้อมูลคริสตัล (ฐานของเรา)
+        const base = {
+            x: canvas.width / 2,
+            y: canvas.height - 40,
+            radius: 35
+        };
 
-        function drawBase(base) {
-            ctx.fillStyle = base.color;
-            ctx.fillRect(base.x, base.y, base.width, base.height);
+        let bullets = [];
+        let enemies = [];
+        let particles = [];
+
+        // ฟังก์ชันยิงกระสุน
+        function shoot(e) {
+            if (!gameActive) return;
             
-            // วาดเลือดฐาน
-            ctx.fillStyle = 'white';
-            ctx.font = '20px Arial';
-            ctx.fillText(`HP: ${base.hp}`, base.x + 5, base.y - 15);
+            // หาพิกัดที่นิ้วแตะ
+            let touchX = e.clientX || (e.touches && e.touches[0].clientX);
+            let touchY = e.clientY || (e.touches && e.touches[0].clientY);
+
+            // คำนวณมุมยิงจากฐานไปยังจุดที่แตะ
+            let angle = Math.atan2(touchY - base.y, touchX - base.x);
+            
+            bullets.push({
+                x: base.x,
+                y: base.y,
+                vx: Math.cos(angle) * 12, // ความเร็วกระสุน
+                vy: Math.sin(angle) * 12,
+                radius: 5,
+                color: '#00d2d3' // สีกระสุนเวทมนตร์
+            });
         }
 
-        function gameLoop() {
-            if (gameOver) return;
+        window.addEventListener("mousedown", shoot);
+        window.addEventListener("touchstart", (e) => { e.preventDefault(); shoot(e); }, {passive: false});
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            frameCount++;
-
-            // วาดพื้นหลังเลน
-            ctx.fillStyle = '#bdc3c7';
-            ctx.fillRect(0, 150, canvas.width, 40);
-
-            drawBase(playerBase);
-            drawBase(enemyBase);
-
-            // ระบบอัตโนมัติ: เพิ่มเงินให้ผู้เล่นเรื่อยๆ
-            if (frameCount % 60 === 0) { // ทุกๆ 1 วินาที (ประมาณ 60 เฟรม)
-                money += 2;
-                updateUI();
+        // ฟังก์ชันสร้างศัตรู
+        function spawnEnemy() {
+            // เกิดแบบสุ่มจากขอบจอด้านบน ซ้าย หรือขวา
+            let x, y;
+            if (Math.random() < 0.5) {
+                x = Math.random() * canvas.width;
+                y = -30; // เกิดด้านบน
+            } else {
+                x = Math.random() < 0.5 ? -30 : canvas.width + 30; // เกิดซ้ายขวา
+                y = Math.random() * (canvas.height / 2);
             }
 
-            // ระบบอัตโนมัติ: บอทปล่อยศัตรู
-            if (frameCount % 180 === 0) { // ทุกๆ 3 วินาที
-                units.push(new Unit(enemyBase.x - 25, 135, 'enemy'));
+            // คำนวณให้เดินพุ่งเข้าหาฐานเสมอ
+            let angle = Math.atan2(base.y - y, base.x - x);
+            // ยิ่งคะแนนเยอะ ศัตรูยิ่งเดินเร็ว
+            let speed = 1.2 + (score * 0.05);
+            
+            enemies.push({
+                x: x, y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                radius: 12,
+                color: '#ff6b6b' // สีศัตรูมินเนี่ยน
+            });
+        }
+
+        // เอฟเฟกต์ระเบิดตอนศัตรูตาย
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 5,
+                    vy: (Math.random() - 0.5) * 5,
+                    life: 1.0,
+                    color: color
+                });
+            }
+        }
+
+        // ลูปหลักของเกม
+        function update() {
+            if (!gameActive) return;
+
+            // ล้างหน้าจอ
+            ctx.fillStyle = "#1a1a2e";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // วาดฐาน (คริสตัล)
+            ctx.beginPath();
+            ctx.arc(base.x, base.y, base.radius, 0, Math.PI * 2);
+            ctx.fillStyle = "#0984e3";
+            ctx.fill();
+            // แสงออร่ารอบฐาน
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = "#00d2d3";
+            ctx.arc(base.x, base.y, base.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0; // ล้างแสง
+
+            // อัปเดตกระสุน
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b = bullets[i];
+                b.x += b.vx;
+                b.y += b.vy;
+
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                ctx.fillStyle = b.color;
+                ctx.fill();
+
+                // ลบกระสุนที่ลอยออกนอกจอ
+                if (b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) {
+                    bullets.splice(i, 1);
+                }
             }
 
-            // คำนวณและวาด Unit
-            for (let i = 0; i < units.length; i++) {
-                let u1 = units[i];
-                u1.isFighting = false;
+            // อัปเดตศัตรู
+            if (frames % Math.max(20, 80 - Math.floor(score/2)) === 0) {
+                spawnEnemy(); // ศัตรูเกิดถี่ขึ้นเรื่อยๆ
+            }
 
-                // เช็คการชนกับฐานศัตรู
-                if (u1.team === 'player' && u1.x + u1.width >= enemyBase.x) {
-                    u1.isFighting = true;
-                    if (frameCount % 30 === 0) enemyBase.hp -= u1.damage;
-                }
-                
-                // เช็คการชนกับฐานเรา
-                if (u1.team === 'enemy' && u1.x <= playerBase.x + playerBase.width) {
-                    u1.isFighting = true;
-                    if (frameCount % 30 === 0) playerBase.hp -= u1.damage;
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                let e = enemies[i];
+                e.x += e.vx;
+                e.y += e.vy;
+
+                ctx.beginPath();
+                ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+                ctx.fillStyle = e.color;
+                ctx.fill();
+
+                // เช็คศัตรูชนฐาน
+                let distToBase = Math.hypot(e.x - base.x, e.y - base.y);
+                if (distToBase < e.radius + base.radius) {
+                    baseHp -= 10;
+                    document.getElementById('hp').innerText = Math.max(0, baseHp);
+                    createExplosion(e.x, e.y, e.color);
+                    enemies.splice(i, 1);
+                    
+                    // กระพริบจอแดงตอนโดนตี
+                    ctx.fillStyle = "rgba(255, 0, 0, 0.3)";
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    if (baseHp <= 0) {
+                        gameActive = false;
+                        document.getElementById('game-over').style.display = 'block';
+                        document.getElementById('final-score').innerText = score;
+                    }
+                    continue;
                 }
 
-                // เช็คการชนกับ Unit ฝั่งตรงข้าม
-                for (let j = 0; j < units.length; j++) {
-                    let u2 = units[j];
-                    if (i !== j && u1.team !== u2.team) {
-                        // เช็ค Hitbox (แกน X)
-                        if (u1.x < u2.x + u2.width && u1.x + u1.width > u2.x) {
-                            u1.isFighting = true;
-                            // ทำดาเมจใส่กัน
-                            if (frameCount % 30 === 0) {
-                                u2.hp -= u1.damage;
-                            }
-                        }
+                // เช็คกระสุนโดนศัตรู
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    let b = bullets[j];
+                    let distToBullet = Math.hypot(e.x - b.x, e.y - b.y);
+                    if (distToBullet < e.radius + b.radius) {
+                        createExplosion(e.x, e.y, e.color);
+                        enemies.splice(i, 1);
+                        bullets.splice(j, 1);
+                        score++;
+                        document.getElementById('score').innerText = score;
+                        break;
                     }
                 }
-
-                u1.update();
-                u1.draw();
             }
 
-            // ลบตัวที่ตายออกจาก Array
-            units = units.filter(u => u.hp > 0);
-
-            // เช็คชนะ/แพ้
-            if (playerBase.hp <= 0) {
-                gameOver = true;
-                alert('แพ้แล้ว! ฐานคุณถูกทำลาย 😭');
-            } else if (enemyBase.hp <= 0) {
-                gameOver = true;
-                alert('ชนะแล้ว! คุณทำลายฐานศัตรูได้ 🎉');
-            }
-
-            requestAnimationFrame(gameLoop);
-        }
-
-        // เริ่มเกม
-        updateUI();
-        gameLoop();
-    </script>
-</body>
-</html>
+            // อัปเดตเอฟเฟกต์ระเบิด
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.05;
+                
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                } else {
+                    ctx.globalAlpha = p.life;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color;
+                    ctx.fill
