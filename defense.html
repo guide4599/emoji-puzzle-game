@@ -5,21 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Crystal Defender | เกมป้องกันฐาน</title>
     <style>
-        body { 
-            margin: 0; 
+        /* ล็อกหน้าจอไม่ให้เลื่อน และขยายเกมให้เต็ม 100% */
+        body, html { 
+            margin: 0; padding: 0; 
+            width: 100%; height: 100%; 
             overflow: hidden; 
-            background-color: #1a1a2e; /* สีพื้นหลังโทนมืด */
+            background-color: #1a1a2e; 
             color: white; 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             touch-action: none; 
         }
+        /* บังคับ Canvas ให้อยู่ถูกที่ */
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0; left: 0;
+            z-index: 1;
+        }
         #ui {
             position: absolute;
-            top: 15px;
-            left: 15px;
-            font-size: 18px;
-            font-weight: bold;
-            pointer-events: none;
+            top: 15px; left: 15px;
+            font-size: 18px; font-weight: bold;
+            pointer-events: none; /* กดทะลุตัวหนังสือได้ */
             z-index: 10;
         }
         .hp-bar { color: #00d2d3; text-shadow: 0 0 5px #00d2d3; margin-bottom: 5px; }
@@ -28,34 +35,23 @@
         #game-over {
             display: none;
             position: absolute;
-            top: 50%;
-            left: 50%;
+            top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
             background: rgba(0, 0, 0, 0.85);
-            padding: 30px;
-            border-radius: 20px;
+            padding: 30px; border-radius: 20px;
             border: 2px solid #ff6b6b;
             box-shadow: 0 0 30px rgba(255, 107, 107, 0.5);
             z-index: 20;
-            width: 80%;
-            max-width: 300px;
+            width: 80%; max-width: 300px;
         }
         #game-over h1 { margin: 0 0 10px 0; color: #ff6b6b; }
         
         .btn {
-            display: block;
-            width: 100%;
-            margin-top: 15px;
-            padding: 12px 0;
-            font-size: 16px;
-            font-weight: bold;
-            color: white;
-            background: #ff6b6b;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            text-decoration: none;
+            display: block; width: 100%; margin-top: 15px; padding: 12px 0;
+            font-size: 16px; font-weight: bold; color: white;
+            background: #ff6b6b; border: none; border-radius: 10px;
+            cursor: pointer; text-decoration: none;
         }
         #home-btn { background: #576574; }
     </style>
@@ -72,7 +68,7 @@
     <div id="game-over">
         <h1>💥 ฐานแตก! 💥</h1>
         <p>คุณปกป้องฐานและกำจัดศัตรูไปได้<br><b style="font-size: 24px; color: #feca57;"><span id="final-score">0</span></b> ตัว</p>
-        <button class="btn" onclick="resetGame()">🔄 ป้องกันฐานอีกครั้ง</button>
+        <button class="btn" onclick="resetGame()">🔄 เล่นใหม่อีกครั้ง</button>
         <a href="index.html" class="btn" id="home-btn">🏠 กลับเมนูหลัก</a>
     </div>
 
@@ -80,115 +76,99 @@
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
         
-        // ปรับขนาดจอให้เต็มมือถือ
+        // สร้างตัวแปรฐานไว้ก่อน
+        let base = { x: 0, y: 0, radius: 35 };
+
+        // ฟังก์ชันปรับขนาดจออัตโนมัติ
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+            // คำนวณจุดกึ่งกลางใหม่ทุกครั้งที่ย่อ/ขยายจอ
+            base.x = canvas.width / 2;
+            base.y = canvas.height - 40;
         }
         window.addEventListener('resize', resize);
-        resize();
+        resize(); // เรียกใช้ทันทีตอนเปิดหน้าเว็บ
 
-        // ตัวแปรระบบเกม
         let score = 0;
         let baseHp = 100;
         let gameActive = true;
         let frames = 0;
-
-        // ข้อมูลคริสตัล (ฐานของเรา)
-        const base = {
-            x: canvas.width / 2,
-            y: canvas.height - 40,
-            radius: 35
-        };
-
         let bullets = [];
         let enemies = [];
         let particles = [];
 
-        // ฟังก์ชันยิงกระสุน
+        // ยิงกระสุน
         function shoot(e) {
             if (!gameActive) return;
             
-            // หาพิกัดที่นิ้วแตะ
             let touchX = e.clientX || (e.touches && e.touches[0].clientX);
             let touchY = e.clientY || (e.touches && e.touches[0].clientY);
 
-            // คำนวณมุมยิงจากฐานไปยังจุดที่แตะ
             let angle = Math.atan2(touchY - base.y, touchX - base.x);
             
             bullets.push({
-                x: base.x,
-                y: base.y,
-                vx: Math.cos(angle) * 12, // ความเร็วกระสุน
+                x: base.x, y: base.y,
+                vx: Math.cos(angle) * 12,
                 vy: Math.sin(angle) * 12,
-                radius: 5,
-                color: '#00d2d3' // สีกระสุนเวทมนตร์
+                radius: 5, color: '#00ffff'
             });
         }
 
         window.addEventListener("mousedown", shoot);
         window.addEventListener("touchstart", (e) => { e.preventDefault(); shoot(e); }, {passive: false});
 
-        // ฟังก์ชันสร้างศัตรู
+        // สร้างศัตรู
         function spawnEnemy() {
-            // เกิดแบบสุ่มจากขอบจอด้านบน ซ้าย หรือขวา
             let x, y;
             if (Math.random() < 0.5) {
                 x = Math.random() * canvas.width;
-                y = -30; // เกิดด้านบน
+                y = -30;
             } else {
-                x = Math.random() < 0.5 ? -30 : canvas.width + 30; // เกิดซ้ายขวา
+                x = Math.random() < 0.5 ? -30 : canvas.width + 30;
                 y = Math.random() * (canvas.height / 2);
             }
 
-            // คำนวณให้เดินพุ่งเข้าหาฐานเสมอ
             let angle = Math.atan2(base.y - y, base.x - x);
-            // ยิ่งคะแนนเยอะ ศัตรูยิ่งเดินเร็ว
             let speed = 1.2 + (score * 0.05);
             
             enemies.push({
                 x: x, y: y,
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
-                radius: 12,
-                color: '#ff6b6b' // สีศัตรูมินเนี่ยน
+                radius: 12, color: '#ff4757'
             });
         }
 
-        // เอฟเฟกต์ระเบิดตอนศัตรูตาย
+        // เอฟเฟกต์ระเบิด
         function createExplosion(x, y, color) {
             for (let i = 0; i < 8; i++) {
                 particles.push({
                     x: x, y: y,
-                    vx: (Math.random() - 0.5) * 5,
-                    vy: (Math.random() - 0.5) * 5,
-                    life: 1.0,
-                    color: color
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    life: 1.0, color: color
                 });
             }
         }
 
-        // ลูปหลักของเกม
+        // ระบบรันเกมหลัก
         function update() {
             if (!gameActive) return;
 
-            // ล้างหน้าจอ
-            ctx.fillStyle = "#1a1a2e";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // ล้างหน้าจอทุกเฟรม
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // วาดฐาน (คริสตัล)
+            // 1. วาดฐาน (คริสตัลสีฟ้า)
             ctx.beginPath();
             ctx.arc(base.x, base.y, base.radius, 0, Math.PI * 2);
             ctx.fillStyle = "#0984e3";
-            ctx.fill();
-            // แสงออร่ารอบฐาน
             ctx.shadowBlur = 20;
             ctx.shadowColor = "#00d2d3";
-            ctx.arc(base.x, base.y, base.radius, 0, Math.PI * 2);
             ctx.fill();
-            ctx.shadowBlur = 0; // ล้างแสง
+            ctx.shadowBlur = 0; 
 
-            // อัปเดตกระสุน
+            // 2. อัปเดตกระสุน
             for (let i = bullets.length - 1; i >= 0; i--) {
                 let b = bullets[i];
                 b.x += b.vx;
@@ -199,15 +179,14 @@
                 ctx.fillStyle = b.color;
                 ctx.fill();
 
-                // ลบกระสุนที่ลอยออกนอกจอ
                 if (b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) {
                     bullets.splice(i, 1);
                 }
             }
 
-            // อัปเดตศัตรู
+            // 3. สร้างและอัปเดตศัตรู
             if (frames % Math.max(20, 80 - Math.floor(score/2)) === 0) {
-                spawnEnemy(); // ศัตรูเกิดถี่ขึ้นเรื่อยๆ
+                spawnEnemy();
             }
 
             for (let i = enemies.length - 1; i >= 0; i--) {
@@ -228,19 +207,20 @@
                     createExplosion(e.x, e.y, e.color);
                     enemies.splice(i, 1);
                     
-                    // กระพริบจอแดงตอนโดนตี
-                    ctx.fillStyle = "rgba(255, 0, 0, 0.3)";
+                    // เอฟเฟกต์จอแดงตอนโดนตี
+                    ctx.fillStyle = "rgba(255, 0, 0, 0.2)";
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+                    // จบเกม
                     if (baseHp <= 0) {
                         gameActive = false;
                         document.getElementById('game-over').style.display = 'block';
                         document.getElementById('final-score').innerText = score;
                     }
-                    continue;
+                    continue; // ข้ามไปตัวถัดไป
                 }
 
-                // เช็คกระสุนโดนศัตรู
+                // เช็คโดนกระสุน
                 for (let j = bullets.length - 1; j >= 0; j--) {
                     let b = bullets[j];
                     let distToBullet = Math.hypot(e.x - b.x, e.y - b.y);
@@ -255,7 +235,7 @@
                 }
             }
 
-            // อัปเดตเอฟเฟกต์ระเบิด
+            // 4. อัปเดตเอฟเฟกต์ระเบิด
             for (let i = particles.length - 1; i >= 0; i--) {
                 let p = particles[i];
                 p.x += p.vx;
@@ -269,4 +249,35 @@
                     ctx.beginPath();
                     ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
                     ctx.fillStyle = p.color;
-                    ctx.fill
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                }
+            }
+
+            frames++;
+            requestAnimationFrame(update);
+        }
+
+        // ฟังก์ชันเริ่มเกมใหม่
+        function resetGame() {
+            score = 0;
+            baseHp = 100;
+            enemies = [];
+            bullets = [];
+            particles = [];
+            frames = 0;
+            document.getElementById('hp').innerText = baseHp;
+            document.getElementById('score').innerText = score;
+            document.getElementById('game-over').style.display = 'none';
+            
+            // ปลุกเกมให้กลับมาเดินต่อ
+            gameActive = true;
+            resize(); 
+            update();
+        }
+
+        // สั่งให้เกมเริ่มทำงานตอนเปิดเว็บ
+        update();
+    </script>
+</body>
+</html>
