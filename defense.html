@@ -23,11 +23,22 @@
         .lvl-text { position: absolute; top: -2px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #0b0c10; font-weight: bold; }
 
         .modal {
-            /* ... โค้ดส่วนบนเหมือนเดิม ... */
-            z-index: 20;
-            width: 90%; /* <--- เพิ่มความกว้างเป็น 90% ของจอ */
-            max-width: 420px; /* <--- เพิ่มความกว้างสูงสุดเป็น 420px (กว้างขึ้น 100px) */
-            padding: 30px; /* <--- เติมพื้นที่เว้นวรรคด้านในกรอบอีกนิดให้ดูโปร่ง */
+            display: none; 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%);
+            text-align: center; 
+            background: rgba(11, 12, 16, 0.95); 
+            border-radius: 15px;
+            border: 2px solid #45f3ff; 
+            box-shadow: 0 0 40px rgba(69, 243, 255, 0.3); 
+            z-index: 20; /* บังคับให้หน้าต่างลอยอยู่หน้าสุดเสมอ */
+            
+            /* --- ขนาดของกรอบ --- */
+            width: 85%; 
+            max-width: 400px; /* ขนาดกว้างกำลังดี ไม่บังจอจนอึดอัด */
+            padding: 25px; 
         }
         .modal h1 { margin: 0 0 15px 0; font-size: 28px; }
         .modal-red { border-color: #ff4757; box-shadow: 0 0 40px rgba(255, 71, 87, 0.4); }
