@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Crystal Defender | ความโหดระดับนรก</title>
+    <title>Crystal Defender | สมดุลใหม่</title>
     <style>
         body, html { 
             margin: 0; padding: 0; width: 100%; height: 100%; 
@@ -110,7 +110,7 @@
 
         const upgradePool = [
             { name: "⚔️ ดาเมจรุนแรง", desc: "พลังโจมตี +1.5", action: () => stats.damage += 1.5 },
-            { name: "⚡ ปืนกลเวทมนตร์", desc: "ยิงเร็วขึ้นรัวๆ", action: () => stats.shootSpeed = Math.max(3, stats.shootSpeed - 3) },
+            { name: "⚡ ปืนกลเวทมนตร์", desc: "ยิงเร็วขึ้น", action: () => stats.shootSpeed = Math.max(3, stats.shootSpeed - 3) },
             { name: "🔫 กระสุนลูกซอง", desc: "ยิงกระจาย +1 นัด", action: () => stats.multiShot += 1 },
             { name: "❤️ นาโนแมชชีน", desc: "ฟื้นฟูเลือดฐาน 50 หน่วย", action: () => stats.hp = Math.min(stats.maxHp, stats.hp + 50) },
             { name: "🛡️ ผนังไทเทเนียม", desc: "เพิ่ม Max HP +100", action: () => { stats.maxHp += 100; stats.hp += 100; } }
@@ -120,7 +120,8 @@
             if (stats.exp >= stats.maxExp) {
                 stats.exp -= stats.maxExp;
                 stats.level++;
-                stats.maxExp = Math.floor(stats.maxExp * 1.6); // EXP ต้องการเพิ่มขึ้นไวมาก
+                // ปรับสมดุล: หลอด EXP ยาวขึ้นทีละนิด (x1.4 แทนที่จะเป็น x1.6)
+                stats.maxExp = Math.floor(stats.maxExp * 1.4); 
                 document.getElementById('lvl').innerText = stats.level;
                 showLevelUpMenu();
             }
@@ -197,30 +198,30 @@
                 if (b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) bullets.splice(i, 1);
             }
 
-            // --- ระบบสุ่มเกิดสุดโหด ---
-            // อัตราการเกิดจะไวขึ้นเรื่อยๆ (ขีดจำกัดสูงสุดคือเกิดทุก 6 เฟรม = ไวมากๆ)
-            let spawnRate = Math.max(6, 60 - Math.floor(stats.score / 2) - (stats.level * 2)); 
+            // --- ปรับสมดุลความเร็วและจำนวนศัตรู ---
+            // เกิดช้าลงในช่วงแรก และจำกัดความถี่สูงสุดไว้ที่ 15 เฟรม (ไม่ให้ล้นจอจนเกินไป)
+            let spawnRate = Math.max(15, 80 - Math.floor(stats.score / 3) - (stats.level * 2)); 
             
             if (frames % spawnRate === 0) {
                 let x = Math.random() < 0.5 ? Math.random() * canvas.width : (Math.random() < 0.5 ? -30 : canvas.width + 30);
                 let y = (x < 0 || x > canvas.width) ? Math.random() * canvas.height/2 : -30;
                 let angle = Math.atan2(base.y - y, base.x - x);
                 
-                // สเกลความโหดพื้นฐาน
-                let eHp = 1 + Math.floor(stats.score / 15) + Math.floor(stats.level / 2);
-                let eSpeed = 1.2 + (stats.score * 0.01) + (stats.level * 0.05);
+                // ปรับสมดุล: เลือดและความเร็วเริ่มต้นต่ำลง เพื่อให้เล่นง่ายขึ้น
+                let eHp = 1 + Math.floor(stats.score / 25) + Math.floor(stats.level / 3);
+                let eSpeed = 0.8 + (stats.score * 0.005) + (stats.level * 0.02);
                 let eRadius = 12;
                 let eColor = '#ff4757';
-                let eExp = 15;
+                let eExp = 20; // ให้ EXP เยอะขึ้น
                 let isBoss = false;
 
-                // โอกาสเกิดตัวพิเศษ
-                if (stats.score > 20 && Math.random() < 0.05 + (stats.level * 0.005)) {
-                    // Tank Boss (ถึกมาก ช้า ตัวใหญ่)
-                    eHp *= 5; eSpeed *= 0.5; eRadius = 25; eColor = '#ff0000'; eExp = 50; isBoss = true;
-                } else if (stats.score > 40 && Math.random() < 0.15) {
-                    // Speedster (เลือดน้อย วิ่งไวมาก ตัวเล็กสีส้ม)
-                    eHp = Math.max(1, Math.floor(eHp / 2)); eSpeed *= 1.8; eRadius = 8; eColor = '#ffa502'; eExp = 25;
+                // สุ่มเกิดบอสหรือตัววิ่งเร็ว (โอกาสเกิดน้อยลงกว่าเดิมนิดหน่อย)
+                if (stats.score > 20 && Math.random() < 0.05 + (stats.level * 0.002)) {
+                    // Boss: ช้า ถึก ให้ EXP โคตรเยอะ!
+                    eHp *= 5; eSpeed *= 0.5; eRadius = 25; eColor = '#ff0000'; eExp = 100; isBoss = true;
+                } else if (stats.score > 40 && Math.random() < 0.1) {
+                    // Speedster: วิ่งไวขึ้น แต่ไม่ถึงกับพุ่งปรี๊ด
+                    eHp = Math.max(1, Math.floor(eHp / 2)); eSpeed *= 1.5; eRadius = 8; eColor = '#ffa502'; eExp = 30;
                 }
 
                 enemies.push({ x: x, y: y, hp: eHp, maxHp: eHp, vx: Math.cos(angle) * eSpeed, vy: Math.sin(angle) * eSpeed, radius: eRadius, color: eColor, exp: eExp, isBoss: isBoss });
@@ -235,14 +236,13 @@
                 ctx.strokeStyle = e.color; ctx.lineWidth = e.isBoss ? 5 : 3; ctx.stroke();
                 ctx.fillStyle = "rgba(255, 71, 87, 0.2)"; ctx.fill(); ctx.restore();
 
-                // วาดหลอดเลือดมอนสเตอร์ (ถ้าโดนตี)
                 if (e.hp < e.maxHp) {
                     ctx.fillStyle = "rgba(255, 0, 0, 0.7)"; ctx.fillRect(e.x - e.radius, e.y - e.radius - 8, e.radius * 2, 4);
                     ctx.fillStyle = "#2ecc71"; ctx.fillRect(e.x - e.radius, e.y - e.radius - 8, (e.radius * 2) * (e.hp / e.maxHp), 4);
                 }
 
                 if (Math.hypot(e.x - base.x, e.y - base.y) < e.radius + base.radius) {
-                    let dmgToBase = e.isBoss ? 40 : 15; // บอสชนทีเดียวเลือดลดฮวบ
+                    let dmgToBase = e.isBoss ? 30 : 10; // ลดดาเมจตอนชนฐานลง
                     stats.hp -= dmgToBase;
                     updateUI();
                     createExplosion(e.x, e.y, e.color, e.isBoss ? 2 : 1);
@@ -261,7 +261,6 @@
                 for (let j = bullets.length - 1; j >= 0; j--) {
                     let b = bullets[j];
                     if (Math.hypot(e.x - b.x, e.y - b.y) < e.radius + b.radius) {
-                        // โอกาสติดคริติคอล 20%
                         let isCrit = Math.random() < 0.2;
                         let finalDmg = isCrit ? stats.damage * 2 : stats.damage;
                         
