@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Crystal Defender | ระบบสกิลสมดุล</title>
+    <title>Crystal Defender | เวอร์ชันสมบูรณ์</title>
     <style>
         body, html { 
             margin: 0; padding: 0; width: 100%; height: 100%; 
@@ -22,11 +22,13 @@
         .exp-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #66fcf1, #45f3ff); transition: width 0.2s; }
         .lvl-text { position: absolute; top: -2px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #0b0c10; font-weight: bold; }
 
+        /* แก้ไขขนาดหน้าต่างให้พอดีและลอยอยู่บนสุด */
         .modal {
             display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             text-align: center; background: rgba(11, 12, 16, 0.95); border-radius: 15px;
-            border: 2px solid #45f3ff; box-shadow: 0 0 40px rgba(69, 243, 255, 0.3); z-index: 20; 
-            width: 85%; max-width: 400px; padding: 25px; 
+            border: 2px solid #45f3ff; box-shadow: 0 0 40px rgba(69, 243, 255, 0.3); 
+            z-index: 20; width: 85%; max-width: 400px; padding: 25px; 
+            pointer-events: auto; /* ทำให้มั่นใจว่ากดปุ่มในกรอบนี้ได้ชัวร์ๆ */
         }
         .modal h1 { margin: 0 0 15px 0; font-size: 28px; }
         .modal-red { border-color: #ff4757; box-shadow: 0 0 40px rgba(255, 71, 87, 0.4); }
@@ -103,14 +105,16 @@
             targetY = e.clientY || (e.touches && e.touches[0].clientY);
         }
         
-        window.addEventListener("mousedown", (e) => { isShooting = true; updateTarget(e); });
-        window.addEventListener("mousemove", (e) => { if(isShooting) updateTarget(e); });
+        // แก้ไขให้ดักจับการทัชเฉพาะบน Canvas เพื่อไม่ให้บล็อกปุ่มบนมือถือ
+        canvas.addEventListener("mousedown", (e) => { isShooting = true; updateTarget(e); });
+        canvas.addEventListener("mousemove", (e) => { if(isShooting) updateTarget(e); });
         window.addEventListener("mouseup", () => isShooting = false);
-        window.addEventListener("touchstart", (e) => { e.preventDefault(); isShooting = true; updateTarget(e); }, {passive: false});
-        window.addEventListener("touchmove", (e) => { e.preventDefault(); if(isShooting) updateTarget(e); }, {passive: false});
+        
+        canvas.addEventListener("touchstart", (e) => { e.preventDefault(); isShooting = true; updateTarget(e); }, {passive: false});
+        canvas.addEventListener("touchmove", (e) => { e.preventDefault(); if(isShooting) updateTarget(e); }, {passive: false});
         window.addEventListener("touchend", () => isShooting = false);
 
-        // --- ระบบสกิลแบบฉลาด (คัดกรองตามสถานการณ์) ---
+        // ระบบเลือกสกิลฉลาด
         function getAvailableUpgrades() {
             let pool = [
                 { name: "⚔️ ดาเมจรุนแรง", desc: "พลังโจมตีพื้นฐาน +1.5", action: () => stats.damage += 1.5 },
